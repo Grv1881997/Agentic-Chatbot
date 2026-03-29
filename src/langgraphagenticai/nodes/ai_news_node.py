@@ -70,7 +70,7 @@ class AINewsNode:
 
         articles_str = "\n\n".join([
             f"Content: {item.get('content', '')}\nURL: {item.get('url', '')}\nDate: {item.get('published_date', '')}"
-            for item in news_items
+            for item in news_items[:5]
         ])
 
         response = self.llm.invoke(prompt_template.format(articles=articles_str))
