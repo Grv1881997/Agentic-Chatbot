@@ -1,4 +1,5 @@
 from src.langgraphagenticai.state.state import State
+from langchain_core.messages import SystemMessage
 
 class ChatbotWithToolNode:
     """
@@ -24,13 +25,28 @@ class ChatbotWithToolNode:
         """
         Returns a chatbot node function.
         """
-        llm_with_tools = self.llm.bind_tools(tools)
+        llm_with_tools = self.llm.bind_tools(tools, tool_choice="auto")
 
         def chatbot_node(state: State):
             """
             Chatbot logic for processing the input state and returning a response.
             """
-            return {"messages": [llm_with_tools.invoke(state["messages"])]}
+            #return {"messages": [llm_with_tools.invoke(state["messages"])]}
+            messages = state["messages"]
 
+            system_msg = SystemMessage(content="""
+                You are an AI assistant.
+
+                You MUST ONLY use the following tools:
+                - tavily_search_results_json
+                - youtube_search
+
+                Do NOT call any other tools like brave_search or browser.search.
+                """)
+            return {
+                "messages": [
+                    llm_with_tools.invoke([system_msg] + messages)
+                ]
+            }
         return chatbot_node
 

@@ -1,5 +1,5 @@
 from configparser import ConfigParser
-
+import os
 
 class Config:
     def __init__(self,config_file="./src/langgraphagenticai/ui/uiconfigfile.ini"):
@@ -18,9 +18,15 @@ class Config:
     def get_page_title(self):
         return self.config["DEFAULT"].get("PAGE_TITLE")
     
+    # def get_groq_key(self):
+    #     return self.config["DEFAULT"].get("GROQ_KEY")
+    
+    # def get_tavily_key(self):
+    #     return self.config["DEFAULT"].get("TAVILY_KEY")
+
     def get_groq_key(self):
-        return self.config["DEFAULT"].get("GROQ_KEY")
+        return os.getenv("GROQ_API_KEY") #or self.config["DEFAULT"].get("GROQ_KEY")
     
     def get_tavily_key(self):
-        return self.config["DEFAULT"].get("TAVILY_KEY")
+        return os.getenv("TAVILY_API_KEY") #or self.config["DEFAULT"].get("TAVILY_KEY")
     

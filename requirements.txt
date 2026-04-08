@@ -7,3 +7,10 @@ langchain_openai
 faiss-cpu
 streamlit
 tavily-python
+fastapi
+uvicorn
+requests
+yt-dlp
+openai
+langchain-groq
+python-dotenv

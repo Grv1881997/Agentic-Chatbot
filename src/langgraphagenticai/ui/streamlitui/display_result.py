@@ -81,7 +81,11 @@ class DisplayResultStreamlit:
                     st.session_state["chatbot_with_web_history"].append({"role": "user", "content": self.user_message})
 
                 # Prepare state and invoke the graph
-                initial_state = {"messages": [user_message]}
+                #initial_state = {"messages": [user_message]}
+                initial_state = {
+                    "messages": [HumanMessage(content=user_message)]
+                }
+                print("Invoking graph with state:", initial_state)
                 with st.chat_message("user"):
                     st.write(user_message)
                 res = graph.invoke(initial_state)
@@ -90,6 +94,7 @@ class DisplayResultStreamlit:
                     #     # with st.chat_message("user"):
                     #     #     st.write(message.content)
                     #     st.session_state["chatbot_with_web_history"].append({"role": "user", "content": message.content})
+
                     if type(message)==ToolMessage:
                         with st.chat_message("ai"):
                             st.write("Tool Call Start")
@@ -100,6 +105,20 @@ class DisplayResultStreamlit:
                         with st.chat_message("assistant"):
                             st.write(message.content)
                         st.session_state["chatbot_with_web_history"].append({"role": "assistant", "content": message.content})
+                    # final_ai_message = None
+
+                    # for message in res['messages']:
+                    #     if isinstance(message, AIMessage) and message.content:
+                    #         final_ai_message = message  # keep updating → last one = final answer
+
+                    # if final_ai_message:
+                    #     with st.chat_message("assistant"):
+                    #         st.write(final_ai_message.content)
+
+                    #     st.session_state["chatbot_with_web_history"].append({
+                    #         "role": "assistant",
+                    #         "content": final_ai_message.content
+                    #     })
 
            
                         

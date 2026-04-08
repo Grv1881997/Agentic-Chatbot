@@ -2,7 +2,7 @@ from langgraph.graph import StateGraph
 from src.langgraphagenticai.state.state import State
 from langgraph.graph import START,END
 from src.langgraphagenticai.nodes.basic_chatbot_node import BasicChatbotNode
-from src.langgraphagenticai.tools.search_tool import get_tools,create_tool_node
+from src.langgraphagenticai.tools.tools import get_tools,create_tool_node
 from langgraph.prebuilt import tools_condition,ToolNode
 from src.langgraphagenticai.nodes.chatbot_with_Tool_node import ChatbotWithToolNode
 from src.langgraphagenticai.nodes.ai_news_node import AINewsNode
@@ -37,6 +37,7 @@ class GraphBuilder:
         """
         ## Define the tool and tool node
         tools=get_tools()
+        print([tool.name for tool in tools])
         tool_node=create_tool_node(tools)
 
         ## Define the LLM
@@ -52,7 +53,7 @@ class GraphBuilder:
         # Define conditional and direct edges
         self.graph_builder.add_edge(START,"chatbot")
         self.graph_builder.add_conditional_edges("chatbot",tools_condition)
-        self.graph_builder.add_edge("tools","chatbot")
+        self.graph_builder.add_edge("tools",END)
 
 
     def ai_news_builder_graph(self):
