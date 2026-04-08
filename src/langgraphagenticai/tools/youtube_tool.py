@@ -1,8 +1,8 @@
 from langchain_core.tools import tool
 from src.mcp_client.mcp_client import MCPClient
 #from mcp_client import MCPClient
-
-mcp = MCPClient("http://localhost:8001")
+import os
+print(os.getenv("MCP_SERVER_URL"))
 
 @tool
 def search_youtube(query: str):
@@ -11,6 +11,8 @@ def search_youtube(query: str):
     music, or anything that requires video content.
     Returns title, URL, and channel name.
     """
+    print(os.getenv("MCP_SERVER_URL"))
+    mcp = MCPClient(os.getenv("MCP_SERVER_URL"))
     data = mcp.call_tool("search_youtube", {"query": query})
     videos = data.get("videos", [])
         
