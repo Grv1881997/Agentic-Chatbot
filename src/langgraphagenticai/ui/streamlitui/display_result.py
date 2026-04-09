@@ -236,13 +236,14 @@ class DisplayResultStreamlit:
                 if type(message)==ToolMessage:
                     with st.chat_message("ai"):
                         #st.write("Tool Call Start")
-                        content = message.content;
+                        content = message.content
                         # Check if message is coming from tavily tool
                         if hasattr(message, 'name') and message.name == 'tavily_search_results_json':
                             # Format the tool content for better readability using AI
                             content = self.format_tavily_results(message.content, self.model)
                             st.markdown(content, unsafe_allow_html=True)
-                        st.write(content)
+                        else:
+                            st.write(content)
                         #st.write("Tool Call End")
                     session_manager.add_message_to_session(usecase, current_session_id, "tool", content)
                 elif type(message)==AIMessage and message.content:
