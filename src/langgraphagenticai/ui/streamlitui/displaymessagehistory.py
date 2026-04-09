@@ -1,40 +1,34 @@
 import streamlit as st
 import json
-
+from src.langgraphagenticai.session.session_manager import SessionManager
 
 class DisplayMessageHistory:
     def __init__(self,usecase):
         self.usecase= usecase
+        self.session_manager=SessionManager()
     
     def retrive_message_history(self):
-        print(" **Usecase Selected:", self.usecase)
-        if self.usecase =="Basic Chatbot":
-            if "basic_chatbot_history" not in st.session_state:
-                st.session_state["basic_chatbot_history"] = []
+        current_session_id = self.session_manager.get_current_session_id(self.usecase)
+        print("Current Session ID:", current_session_id)
+        
+        # Get and display the current session history
+        session_history = self.session_manager.get_session_history(self.usecase, current_session_id)
+        print("Session History:", session_history)
+        self._display_session_history(session_history)
 
-            # Display the Basic Chatbot history
-            for chat in st.session_state["basic_chatbot_history"]:
-                if chat["role"] == "user":
-                    with st.chat_message("user"):
-                        st.write(chat["content"])
-                elif chat["role"] == "assistant":
-                    with st.chat_message("assistant"):
-                        st.write(chat["content"])
+    def _display_session_history(self, session_history):
+        """
+        Display the session history
+        """
+        for chat in session_history:
+            if chat["role"] == "user":
+                with st.chat_message("user"):
+                    st.write(chat["content"])
+            elif chat["role"] == "assistant":
+                with st.chat_message("assistant"):
+                    st.write(chat["content"])
+            elif chat["role"] == "tool":
+                print("Tool message:", chat["content"])
+                with st.chat_message("ai"):
+                    st.markdown(chat["content"], unsafe_allow_html=True)
 
-        elif self.usecase=="Chatbot With Web":
-            if "chatbot_with_web_history" not in st.session_state:
-                st.session_state["chatbot_with_web_history"] = []
-
-            # Display the Chatbot With Web history
-            for chat in st.session_state["chatbot_with_web_history"]:
-                if chat["role"] == "user":
-                    with st.chat_message("user"):
-                        st.write(chat["content"])
-                elif chat["role"] == "assistant":
-                    with st.chat_message("assistant"):
-                        st.write(chat["content"])
-                elif chat["role"] == "tool":
-                    with st.chat_message("ai"):
-                        st.write("Tool Call Start")
-                        st.write(chat["content"])
-                        st.write("Tool Call End")

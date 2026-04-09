@@ -2,7 +2,7 @@ import streamlit as st
 from langchain_core.messages import HumanMessage,AIMessage,ToolMessage
 import json
 import re
-
+from src.langgraphagenticai.session.session_manager import SessionManager
 
 class DisplayResultStreamlit:
     def __init__(self,usecase,graph,user_message,model=None):
@@ -98,39 +98,94 @@ class DisplayResultStreamlit:
         
         return formatted_output
 
+    def _session_history_to_messages(self, history):
+        """
+        Convert session state history to LangChain messages format
+        """
+        messages = []
+        for chat in history:
+            if chat["role"] == "user":
+                messages.append(HumanMessage(content=chat["content"]))
+            elif chat["role"] == "assistant":
+                messages.append(AIMessage(content=chat["content"]))
+            # Note: Tool messages are handled separately by the graph
+        return messages
+
+    def _display_chat_history(self, history_key):
+        """
+        Display the chat history for the given use case
+        """
+        if history_key in st.session_state:
+            for chat in st.session_state[history_key]:
+                if chat["role"] == "user":
+                    with st.chat_message("user"):
+                        st.write(chat["content"])
+                elif chat["role"] == "assistant":
+                    with st.chat_message("assistant"):
+                        st.write(chat["content"])
+                elif chat["role"] == "tool":
+                    with st.chat_message("ai"):
+                        st.markdown(chat["content"], unsafe_allow_html=True)
+
+    def _display_session_history(self, session_history):
+        """
+        Display the session history
+        """
+        for chat in session_history:
+            if chat["role"] == "user":
+                with st.chat_message("user"):
+                    st.write(chat["content"])
+            elif chat["role"] == "assistant":
+                with st.chat_message("assistant"):
+                    st.write(chat["content"])
+            elif chat["role"] == "tool":
+                with st.chat_message("ai"):
+                    st.markdown(chat["content"], unsafe_allow_html=True)
+
     def display_result_on_ui(self):
         usecase= self.usecase
         graph = self.graph
         user_message = self.user_message
         print(user_message)
-        # Initialize or retrieve the chat history
-        # if "chat_history" not in st.session_state:
-        #     st.session_state["chat_history"] = []
-
-        # # Add the user's message to the chat history
-        # st.session_state["chat_history"].append({"role": "user", "content": user_message})
         print("Usecase Selected:", usecase)
+        
+        # Show session indicator for chat use cases
+        # if usecase in ["Basic Chatbot", "Chatbot With Web"]:
+        #     session_ui = SessionUI(usecase)
+        #     session_ui.render_session_indicator()
+        
         if usecase =="Basic Chatbot":
-                # Initialize or retrieve the chat history for Basic Chatbot
-                if "basic_chatbot_history" not in st.session_state:
-                    st.session_state["basic_chatbot_history"] = []
-
-                # Display the Basic Chatbot history
-                # for chat in st.session_state["basic_chatbot_history"]:
-                #     if chat["role"] == "user":
-                #         with st.chat_message("user"):
-                #             st.write(chat["content"])
-                #     elif chat["role"] == "assistant":
-                #         with st.chat_message("assistant"):
-                #             st.write(chat["content"])
+                # Initialize session manager
+                print("*********************** Start ***********************")
+                session_manager = SessionManager()
+                current_session_id = session_manager.get_current_session_id(usecase)
+                print("Current Session ID:", current_session_id)
+                
+                # Get and display the current session history
+                session_history = session_manager.get_session_history(usecase, current_session_id)
+                print("Session History:", session_history)
+                #self._display_session_history(session_history)
 
                 if self.user_message:
-                    # Add the user's message to the Basic Chatbot history
-                    st.session_state["basic_chatbot_history"].append({"role": "user", "content": self.user_message})
+                    # Add the user's message to the current session
+                    session_manager.add_message_to_session(usecase, current_session_id, "user", self.user_message)
                     print(user_message)
                     with st.chat_message("user"):
                         st.write(user_message)
-                    for event in graph.stream({'messages':("user",user_message)}):
+                    
+                    # Get updated session history for context
+                    updated_history = session_manager.get_session_history(usecase, current_session_id)
+                    
+                    # Convert session history to LangChain messages for context
+                    history_messages = self._session_history_to_messages(updated_history)
+                    
+                    # Prepare state with full chat history for context awareness
+                    initial_state = {
+                        "messages": history_messages
+                    }
+                    print("Invoking graph with state (including chat history):", initial_state)
+                    
+                    for event in graph.stream(initial_state):
                         print(event.values())
                         for value in event.values():
                             # print(value['messages'])
@@ -139,63 +194,61 @@ class DisplayResultStreamlit:
                             assistant_message = value["messages"].content
                             with st.chat_message("assistant"):
                                 st.write(assistant_message)
-                            # Add the assistant's response to the chat history
-                            st.session_state["basic_chatbot_history"].append({"role": "assistant", "content": assistant_message})
+                            # Add the assistant's response to the current session
+                            session_manager.add_message_to_session(usecase, current_session_id, "assistant", assistant_message)
 
 
         elif usecase=="Chatbot With Web":
-            # Initialize or retrieve the chat history for Chatbot With Web
-            if "chatbot_with_web_history" not in st.session_state:
-                st.session_state["chatbot_with_web_history"] = []
+            # Initialize session manager
+            session_manager = SessionManager()
+            current_session_id = session_manager.get_current_session_id(usecase)
+            
+            # Get and display the current session history
+            session_history = session_manager.get_session_history(usecase, current_session_id)
+            #self._display_session_history(session_history)
 
-            # Display the Chatbot With Web history
-            # for chat in st.session_state["chatbot_with_web_history"]:
-            #     if chat["role"] == "user":
-            #         with st.chat_message("user"):
-            #             st.write(chat["content"])
-            #     elif chat["role"] == "assistant":
-            #         with st.chat_message("assistant"):
-            #             st.write(chat["content"])
-            #     elif chat["role"] == "tool":
-            #         with st.chat_message("ai"):
-            #             st.write("Tool Call Start")
-            #             st.write(chat["content"])
-            #             st.write("Tool Call End")
-
-            # Add new user input to the Chatbot With Web history
+            # Add new user input to the current session
             if self.user_message:
-                # Add the user's message to the Chatbot With Web history (only once)
-                if not st.session_state["chatbot_with_web_history"] or \
-                        st.session_state["chatbot_with_web_history"][-1]["content"] != self.user_message:
-                    st.session_state["chatbot_with_web_history"].append({"role": "user", "content": self.user_message})
+                # Add the user's message to the current session (only once)
+                if not session_history or session_history[-1]["content"] != self.user_message:
+                    session_manager.add_message_to_session(usecase, current_session_id, "user", self.user_message)
 
-                # Prepare state and invoke the graph
-                #initial_state = {"messages": [user_message]}
+                # Get updated session history for context
+                updated_history = session_manager.get_session_history(usecase, current_session_id)
+                
+                # Convert session history to LangChain messages for context
+                history_messages = self._session_history_to_messages(updated_history)
+                
+                # Prepare state with full chat history for context awareness
                 initial_state = {
-                    "messages": [HumanMessage(content=user_message)]
+                    "messages": history_messages
                 }
-                print("Invoking graph with state:", initial_state)
+                print("Invoking graph with state (including chat history):", initial_state)
                 with st.chat_message("user"):
                     st.write(user_message)
                 res = graph.invoke(initial_state)
-                for message in res['messages']:
-                    # if type(message) == HumanMessage:
-                    #     # with st.chat_message("user"):
-                    #     #     st.write(message.content)
-                    #     st.session_state["chatbot_with_web_history"].append({"role": "user", "content": message.content})
-
-                    if type(message)==ToolMessage:
-                        with st.chat_message("ai"):
-                            #st.write("Tool Call Start")
+                message = res['messages'][-1]
+                print(type(message))
+                # if type(message) == HumanMessage:
+                #     # with st.chat_message("user"):
+                #     #     st.write(message.content)
+                print("Message received from graph:", message)
+                if type(message)==ToolMessage:
+                    with st.chat_message("ai"):
+                        #st.write("Tool Call Start")
+                        content = message.content;
+                        # Check if message is coming from tavily tool
+                        if hasattr(message, 'name') and message.name == 'tavily_search_results_json':
                             # Format the tool content for better readability using AI
-                            formatted_content = self.format_tavily_results(message.content, self.model)
-                            st.markdown(formatted_content, unsafe_allow_html=True)
-                            #st.write("Tool Call End")
-                        st.session_state["chatbot_with_web_history"].append({"role": "tool", "content": formatted_content})
-                    elif type(message)==AIMessage and message.content:
-                        with st.chat_message("assistant"):
-                            st.write(message.content)
-                        st.session_state["chatbot_with_web_history"].append({"role": "assistant", "content": message.content})
+                            content = self.format_tavily_results(message.content, self.model)
+                            st.markdown(content, unsafe_allow_html=True)
+                        st.write(content)
+                        #st.write("Tool Call End")
+                    session_manager.add_message_to_session(usecase, current_session_id, "tool", content)
+                elif type(message)==AIMessage and message.content:
+                    with st.chat_message("assistant"):
+                        st.write(message.content)
+                    session_manager.add_message_to_session(usecase, current_session_id, "assistant", message.content)
                     # final_ai_message = None
 
                     # for message in res['messages']:

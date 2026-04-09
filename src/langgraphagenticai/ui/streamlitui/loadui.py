@@ -58,16 +58,9 @@ class LoadStreamlitUI:
                     st.session_state.IsFetchButtonClicked = True
                     st.session_state.timeframe = time_frame
 
-        if self.user_controls["selected_usecase"] =="Basic Chatbot":
-            # Call the main logic to retrieve and display message history for Chatbot With Web use case
-            DisplayMessageHistory("Basic Chatbot").retrive_message_history()
-            # Call the main logic to set up the graph and display the result
-            # graph_builder = GraphBuilder(self.user_controls["selected_llm"])
-            # graph = graph_builder.setup_graph("Basic Chatbot")
-            # DisplayResultStreamlit("Basic Chatbot", graph, "").display_result_on_ui()
+        selected_usecase=self.user_controls["selected_usecase"]
 
-        elif self.user_controls["selected_usecase"] =="Chatbot With Web":
-            # Call the main logic to retrieve and display message history for Chatbot With Web use case
-            DisplayMessageHistory("Chatbot With Web").retrive_message_history()
+        # Call the main logic to retrieve and display message history for the selected use case
+        DisplayMessageHistory(selected_usecase).retrive_message_history()
 
         return self.user_controls
