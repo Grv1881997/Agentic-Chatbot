@@ -1,3 +1,13 @@
+# Virtual Environment
 venv/
 
+# Environment Variables
 .env
+
+# Python bytecode files
+__pycache__/
+*.py[cod]
+*$py.class
+*.cpython-313.pyc
+
+AINews/

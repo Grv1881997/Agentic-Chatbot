@@ -1,13 +1,102 @@
 import streamlit as st
 from langchain_core.messages import HumanMessage,AIMessage,ToolMessage
 import json
+import re
 
 
 class DisplayResultStreamlit:
-    def __init__(self,usecase,graph,user_message):
+    def __init__(self,usecase,graph,user_message,model=None):
         self.usecase= usecase
         self.graph = graph
         self.user_message = user_message
+        self.model = model
+
+    def format_tavily_results(self, content, model=None):
+        """
+        Format Tavily search results using AI to present them naturally
+        """
+        try:
+            # Try to parse as JSON
+            if isinstance(content, str):
+                results = json.loads(content)
+            else:
+                results = content
+            
+            # If we have a model, use AI to format the results naturally
+            if model and isinstance(results, list):
+                # Prepare a summary of the search results for the AI
+                search_summary = "I found some search results for you. Here's what I discovered:\n\n"
+                
+                for i, result in enumerate(results, 1):
+                    if isinstance(result, dict):
+                        title = result.get('title', 'No Title')
+                        url = result.get('url', '')
+                        content_text = result.get('content', '')
+                        score = result.get('score', 0)
+                        
+                        # Clean up content for AI processing
+                        cleaned_content = re.sub(r'\s+', ' ', content_text).strip()
+                        if len(cleaned_content) > 300:
+                            cleaned_content = cleaned_content[:300] + "..."
+                        
+                        search_summary += f"{i}. {title}\n"
+                        search_summary += f"   Content: {cleaned_content}\n"
+                        search_summary += f"   Source: {url}\n\n"
+                
+                # Create AI prompt to format results naturally
+                ai_prompt = f"""Based on these search results, please present them to the user in a natural, conversational way. 
+                Start with a friendly introduction like "Here's what I found for you:" or "I found some great results for your search:".
+                Then summarize the key findings in a clear, organized manner. Make it sound like a helpful assistant presenting information.
+                
+                IMPORTANT: Always include the source URLs in your response so users can visit the links. Format them as clickable links or clearly mention the URLs.
+                
+                {search_summary}
+                
+                Please format your response in a friendly, conversational tone and make sure to include all the URLs for each result."""
+                
+                try:
+                    # Get AI to format the results
+                    ai_response = model.invoke(ai_prompt)
+                    return ai_response.content
+                except Exception as e:
+                    print(f"AI formatting failed: {e}")
+                    # Fall back to manual formatting
+                    return self._manual_format_results(results)
+            
+            # Fallback to manual formatting if no model or parsing fails
+            return self._manual_format_results(results)
+            
+        except (json.JSONDecodeError, Exception) as e:
+            print(f"Error formatting results: {e}")
+            # If parsing fails, return the original content with basic formatting
+            return f"## Search Results\n\n{content}"
+
+    def _manual_format_results(self, results):
+        """
+        Manual formatting as fallback
+        """
+        formatted_output = "## Search Results\n\n"
+        
+        if isinstance(results, list):
+            for i, result in enumerate(results, 1):
+                if isinstance(result, dict):
+                    title = result.get('title', 'No Title')
+                    url = result.get('url', '')
+                    content_text = result.get('content', '')
+                    score = result.get('score', 0)
+                    
+                    # Clean up content
+                    cleaned_content = re.sub(r'\s+', ' ', content_text).strip()
+                    if len(cleaned_content) > 500:
+                        cleaned_content = cleaned_content[:500] + "..."
+                    
+                    formatted_output += f"### {i}. {title}\n\n"
+                    formatted_output += f"**URL:** {url}\n\n"
+                    formatted_output += f"**Content:** {cleaned_content}\n\n"
+                    formatted_output += f"**Relevance Score:** {score:.2f}\n\n"
+                    formatted_output += "---\n\n"
+        
+        return formatted_output
 
     def display_result_on_ui(self):
         usecase= self.usecase
@@ -97,10 +186,12 @@ class DisplayResultStreamlit:
 
                     if type(message)==ToolMessage:
                         with st.chat_message("ai"):
-                            st.write("Tool Call Start")
-                            st.write(message.content)
-                            st.write("Tool Call End")
-                        st.session_state["chatbot_with_web_history"].append({"role": "tool", "content": message.content})
+                            #st.write("Tool Call Start")
+                            # Format the tool content for better readability using AI
+                            formatted_content = self.format_tavily_results(message.content, self.model)
+                            st.markdown(formatted_content, unsafe_allow_html=True)
+                            #st.write("Tool Call End")
+                        st.session_state["chatbot_with_web_history"].append({"role": "tool", "content": formatted_content})
                     elif type(message)==AIMessage and message.content:
                         with st.chat_message("assistant"):
                             st.write(message.content)
